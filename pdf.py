@@ -21,8 +21,8 @@ from calibre.utils.logging import GUILog
 
 from calibre_plugins.extract_isbn.scan import BookScanner
 
-FRONT_PAGES = 10
-BACK_PAGES = 5
+FRONT_PAGES = 25
+BACK_PAGES = 15
 
 
 def get_isbn_from_pdf(log, pdf_path):
