@@ -74,14 +74,14 @@ def get_isbn(output_dir, pdf_name, log=None):
 
             if total_pages <= FRONT_PAGES + BACK_PAGES:
                 # No point in doing all the complexity of ranges
-                text = call_pdftohtml(log, output_dir, pdf_name)
+                text = call_convert_cmd(log, output_dir, pdf_name)
                 scanner.look_for_identifiers_in_text([text])
 
             else:
-                text = call_pdftohtml(log, output_dir, pdf_name, 1, FRONT_PAGES)
+                text = call_convert_cmd(log, output_dir, pdf_name, 1, FRONT_PAGES)
                 scanner.look_for_identifiers_in_text([text])
                 if not scanner.has_identifier():
-                    text = call_pdftohtml(log, output_dir, pdf_name, total_pages-BACK_PAGES, total_pages)
+                    text = call_convert_cmd(log, output_dir, pdf_name, total_pages-BACK_PAGES, total_pages)
                     scanner.look_for_identifiers_in_text([text])
         return scanner.get_isbn_result()
     finally:
@@ -132,15 +132,24 @@ def get_page_count(log, output_dir, pdf_name):
         return int(ans['Pages'])
 
 
-def call_pdftohtml(log, output_dir, pdf_name, first=None, last=None):
+USE_PDFTOTEXT = bool(shutil.which('pdftotext'))
+
+def call_convert_cmd(log, output_dir, pdf_name, first=None, last=None):
     '''
-    Convert the pdf into html using the pdftohtml app.
-    This will write the xml as index.xml into output_dir.
+    Convert the pdf into xml/txt using the pdftohtml/text app.
+    This will write the output as index.xml/.txt into output_dir.
+
+    pdftotext is often better than pdftohtml.
     '''
-    from calibre.ebooks.pdf.pdftohtml import PDFTOHTML, popen
+    from calibre.ebooks.pdf.pdftohtml import popen
 
     pdfsrc = os.path.join(output_dir, pdf_name)
-    index_file = os.path.join(output_dir, 'index.xml')
+    if USE_PDFTOTEXT:
+        EXE = 'pdftotext'
+        index_file = os.path.join(output_dir, 'index.txt')
+    else:
+        from calibre.ebooks.pdf.pdftohtml import PDFTOHTML as EXE
+        index_file = os.path.join(output_dir, 'index.xml')
 
     if os.path.exists(index_file):
         os.remove(index_file)
@@ -155,14 +164,16 @@ def call_pdftohtml(log, output_dir, pdf_name, first=None, last=None):
         def a(x):
             return os.path.basename(x).encode('ascii')
 
-        exe = PDFTOHTML.encode(filesystem_encoding) if isinstance(PDFTOHTML,
-                str) else PDFTOHTML
+        exe = EXE.encode(filesystem_encoding) if isinstance(EXE, str) else EXE
+        if USE_PDFTOTEXT:
+            cmd = [exe, b'-enc', b'UTF-8', b'-nopgbrk', b'-q',
+                    a(pdfsrc), a(index_file)]
+        else:
+            cmd = [exe, b'-enc', b'UTF-8', b'-noframes', b'-p', b'-nomerge',
+                    b'-nodrm', b'-q', a(pdfsrc), a(index_file), b'-xml', b'-i']
+            if isbsd:
+                cmd.remove(b'-nodrm')
 
-        cmd = [exe, b'-enc', b'UTF-8', b'-noframes', b'-p', b'-nomerge',
-                b'-nodrm', b'-q', a(pdfsrc), a(index_file), b'-xml', b'-i']
-
-        if isbsd:
-            cmd.remove(b'-nodrm')
         if first is not None:
             cmd.append(b'-f')
             cmd.append(str(first))
@@ -177,7 +188,7 @@ def call_pdftohtml(log, output_dir, pdf_name, first=None, last=None):
         except OSError as err:
             if err.errno == errno.ENOENT:
                 raise ConversionError(
-                    _('Could not find pdftohtml, check it is in your PATH'))
+                    _('Could not find %s, check it is in your PATH') % EXE)
             else:
                 raise
 
@@ -196,15 +207,19 @@ def call_pdftohtml(log, output_dir, pdf_name, first=None, last=None):
         if ret != 0:
             raise ConversionError(out)
         if out:
-            log('pdftohtml log:')
+            log('%s log:' % EXE)
             log(out)
-        if not os.path.exists(index_file) or os.stat(index_file).st_size < 100:
+        if not os.path.exists(index_file):
             raise DRMError()
 
-        with open(index_file, 'r', encoding='iso-8859-1', errors='ignore') as f:
-            # avoid encoding problems
-            content = f.read().encode('utf-8')
-        parser = etree.XMLParser(recover=True)
-        tree = etree.fromstring(clean_ascii_chars(content), parser)
-        text = ''.join(e.text or '' for e in tree.iter('text'))
+        if USE_PDFTOTEXT:
+            with open(index_file, 'r', encoding='utf-8', errors='ignore') as f:
+                text = f.read()
+        else:
+            with open(index_file, 'r', encoding='utf-8', errors='ignore') as f:
+                # avoid encoding problems
+                content = f.read().encode('utf-8')
+            parser = etree.XMLParser(recover=True)
+            tree = etree.fromstring(clean_ascii_chars(content), parser)
+            text = ''.join(e.text or '' for e in tree.iter('text'))
         return text
