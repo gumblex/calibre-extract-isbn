@@ -20,7 +20,7 @@ from calibre.utils.config import prefs
 class QueueProgressDialog(QProgressDialog):
 
     def __init__(self, gui, book_ids, queue, db):
-        QProgressDialog.__init__(self, '', u'', 0, len(book_ids), gui)
+        QProgressDialog.__init__(self, '', '', 0, len(book_ids), gui)
         self.setWindowTitle('Queueing books for extracting ISBN')
         self.setMinimumWidth(500)
         self.book_ids, self.queue, self.db = book_ids, queue, db

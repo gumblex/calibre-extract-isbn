@@ -12,10 +12,10 @@ from calibre.ebooks.metadata import check_isbn
 
 import calibre_plugins.extract_isbn.config as cfg
 
-RE_ISBN = re.compile(u'\s*([0-9\-\.–­―—\^ ]{9,18}[0-9xX])', re.UNICODE)
+RE_ISBN = re.compile('\s*([0-9\-\.–­―—\^ ]{9,18}[0-9xX])', re.UNICODE)
 
-RE_STRIP_STYLE = re.compile(u'<style[^<]+</style>', re.MULTILINE | re.UNICODE)
-RE_STRIP_MARKUP = re.compile(u'<[^>]+>', re.UNICODE)
+RE_STRIP_STYLE = re.compile('<style[^<]+</style>', re.MULTILINE | re.UNICODE)
+RE_STRIP_MARKUP = re.compile('<[^>]+>', re.UNICODE)
 
 class BookScanner(object):
 
@@ -45,8 +45,8 @@ class BookScanner(object):
             book_files = reversed(book_files)
         for book_file in book_files:
             # Strip all the html markup tags out in case we get clashes with svg covers
-            book_file = unicode(RE_STRIP_STYLE.sub('', book_file))
-            book_file = unicode(RE_STRIP_MARKUP.sub('!', book_file))
+            book_file = str(RE_STRIP_STYLE.sub('', book_file))
+            book_file = str(RE_STRIP_MARKUP.sub('!', book_file))
             #open('E:\\isbn.html', 'wb').write(book_file)
             if forward:
                 for match in RE_ISBN.finditer(book_file):

@@ -31,7 +31,7 @@ def get_isbn_from_pdf(log, pdf_path):
     to get the page count as an xml file.
     '''
     with TemporaryDirectory('_isbn_pdf') as output_dir:
-        pdf_copy = os.path.join(output_dir, u'src.pdf')
+        pdf_copy = os.path.join(output_dir, 'src.pdf')
         with open(pdf_path, 'rb') as src, open(pdf_copy, 'wb') as dest:
             shutil.copyfileobj(src, dest)
 
@@ -121,8 +121,8 @@ def get_page_count(log, output_dir, pdf_name):
         return None
     ans = {}
     for line in raw.splitlines():
-        if u':' not in line: continue
-        field, val = line.partition(u':')[::2]
+        if ':' not in line: continue
+        field, val = line.partition(':')[::2]
         val = val.strip()
         if field and val:
             ans[field] = val.strip()
@@ -140,7 +140,7 @@ def call_pdftohtml(log, output_dir, pdf_name, first=None, last=None):
     from calibre.ebooks.pdf.pdftohtml import PDFTOHTML, popen
 
     pdfsrc = os.path.join(output_dir, pdf_name)
-    index_file = os.path.join(output_dir, u'index.xml')
+    index_file = os.path.join(output_dir, 'index.xml')
 
     if os.path.exists(index_file):
         os.remove(index_file)
@@ -156,7 +156,7 @@ def call_pdftohtml(log, output_dir, pdf_name, first=None, last=None):
             return os.path.basename(x).encode('ascii')
 
         exe = PDFTOHTML.encode(filesystem_encoding) if isinstance(PDFTOHTML,
-                unicode) else PDFTOHTML
+                str) else PDFTOHTML
 
         cmd = [exe, b'-enc', b'UTF-8', b'-noframes', b'-p', b'-nomerge',
                 b'-nodrm', b'-q', a(pdfsrc), a(index_file), b'-xml', b'-i']
@@ -170,7 +170,7 @@ def call_pdftohtml(log, output_dir, pdf_name, first=None, last=None):
             cmd.append(b'-l')
             cmd.append(str(last))
 
-        logf = PersistentTemporaryFile(u'pdftohtml_log')
+        logf = PersistentTemporaryFile('pdftohtml_log')
         try:
             p = popen(cmd, stderr=logf._fd, stdout=logf._fd,
                     stdin=subprocess.PIPE)
@@ -201,7 +201,10 @@ def call_pdftohtml(log, output_dir, pdf_name, first=None, last=None):
         if not os.path.exists(index_file) or os.stat(index_file).st_size < 100:
             raise DRMError()
 
-        with open(index_file, 'rb') as f:
-            root = etree.fromstring(clean_ascii_chars(f.read()))
-            text = etree.tostring(root, method='text', encoding=unicode)
-            return text
+        with open(index_file, 'r', encoding='iso-8859-1', errors='ignore') as f:
+            # avoid encoding problems
+            content = f.read().encode('utf-8')
+        parser = etree.XMLParser(recover=True)
+        tree = etree.fromstring(clean_ascii_chars(content), parser)
+        text = ''.join(e.text or '' for e in tree.iter('text'))
+        return text

@@ -92,10 +92,10 @@ class ConfigWidget(QWidget):
     def save_settings(self):
         new_prefs = {}
         new_prefs[KEY_POST_TASK] = self.showCombo.selected_key()
-        prefixes = unicode(self.isbn13_ledit.text()).replace(' ','')
+        prefixes = self.isbn13_ledit.text().replace(' ','')
         new_prefs[KEY_VALID_ISBN13_PREFIX] = prefixes.split(',')
-        new_prefs[KEY_WORKER_THRESHOLD] = int(unicode(self.threshold_spin.value()))
-        new_prefs[KEY_BATCH_SIZE] = int(unicode(self.batch_spin.value()))
+        new_prefs[KEY_WORKER_THRESHOLD] = int(self.threshold_spin.value())
+        new_prefs[KEY_BATCH_SIZE] = int(self.batch_spin.value())
 
         plugin_prefs[STORE_NAME] = new_prefs
 
